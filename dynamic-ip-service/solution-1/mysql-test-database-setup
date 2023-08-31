@@ -1,0 +1,20 @@
+CREATE DATABASE IF NOT EXISTS dyn_ip;
+
+CREATE TABLE IF NOT EXISTS dyn_ip.hosts (
+  id VARCHAR(30) NOT NULL PRIMARY KEY,
+  ip VARCHAR(20) NOT NULL,
+  port MEDIUMINT UNSIGNED,
+  status TINYINT NOT NULL
+ ) ENGINE=MyISAM;
+
+/* Populate table with a single record */ 
+INSERT INTO dyn_ip.hosts (id, ip, status) VALUES ('loc1', '127.0.0.1', 0);
+ 
+CREATE OR REPLACE USER 'dynip_user'@'%' IDENTIFIED BY 'dynip_user001';  
+ 
+GRANT UPDATE ON dyn_ip.* TO 'dynip_user'@'%';
+GRANT SELECT ON dyn_ip.* TO 'dynip_user'@'%';
+
+/*
+UPDATE hosts SET hosts.ip='132.1.0.1', hosts.status=1, hosts.port=5050 WHERE hosts.id ='loc1';
+*/

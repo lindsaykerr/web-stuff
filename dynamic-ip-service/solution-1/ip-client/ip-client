@@ -1,0 +1,303 @@
+#!/usr/bin/env python3
+"""
+This script acts as a dynamic IP client, and target server listener.
+
+The script will attempt to connect to a target on a remote server. 
+By default server using the following parameters:
+    
+        Target URL: localhost
+        Target Port: 80
+        Target Resource: /
+        Service Port: 5050
+
+However, the script can be configured to use different parameters on the
+command line, for example:
+        
+        ./ip-client t_url='example.com' t_port=443 t_resource=/target/logger.php s_port=3000
+
+"""
+
+import requests
+import socket
+import time
+import datetime
+import sys
+
+__author__ = "Lindsay Kerr <email: contact@linzk.net>"
+__version__ = "0.1.0"
+__license__ = "MIT"
+__copyright__ = "2023 Lindsay Kerr"
+__status__ = "Development"
+
+TARGET_URL = 'localhost'
+TARGET_PORT = 80
+TARGET_RESOURCE = ''
+SERVICE_PORT = 5050
+LISTENER_TIMEOUT = 900
+
+
+class Dynamic_IP_Client:
+    """
+    Acts a dynamic IP broadcaster, and target server listener.
+
+    Attributes:
+    -----------
+        listener_port: int - The port number used by listener.
+        listener_socket: Socket - The socket object assigned to the listener.
+        ip: str - The IP address of the target server.
+        resource: str - The resource path on the target server.
+        host: str - The host name of the target server.
+        port: int - The port number of the target server.
+
+    Methods:
+    --------
+        reset(): Resets the IP address of the target server.
+        shutdown(): Shuts down the listener.
+        send_ip(): Sends the IP address to the target server.
+        listener(): Listens for incoming requests from the target server.
+    """
+
+    def __init__(self, host, resource, port, service_port):
+        # listener attributes
+        self.listener_port = service_port
+        self.listener_socket = self._set_listener_socket()
+        
+        # target attributes
+        self.ip = self._get_host(host)
+        self.resource = resource
+        self.host = host
+        self.port = int(port)
+  
+        print("Target server @ {host}:{port}, ip: {ip}"
+              .format(host=self.host, port=self.port, ip=self.ip))
+
+    ###
+    # Public methods
+    ###
+
+    def reset(self):
+        """Resets the broadcaster, so that it can attempt to send the IP address again."""
+        self.ip = self._get_host(self.host)
+
+
+    def shutdown(self):
+        self.listener_socket.shutdown(socket.SHUT_RDWR)
+        self.listener_socket.close()
+
+
+    def broadcaster(self):
+        """
+        Sends the IP address to the remote server.
+        """        
+        schema = {
+            80: 'http://',
+            443: 'https://'
+        }
+
+        attempts = 3
+
+        while True:
+            if attempts == 0:
+                print("-x- Could not connect to target after 3 failed attempts. Shutting down")
+                self._log_error("Could not connect to target after 3 failed attempts. Shutting down")
+                return -1
+ 
+            try:
+                # Send a request to the remote server.
+                # The request must include the IP address and the port number of the listener.
+                # The request must be sent over HTTP or HTTPS.
+                request_to = '{schema}{host}{resource}'.format(
+                    schema=schema[self.port], 
+                    host=self.host, 
+                    resource=self.resource
+                    )
+                
+                # TODO: the code below is only for testing purposes, replace with a proper authentication method.
+                response = requests.post(request_to, timeout=10, data={'code': 'CN_1268', 'port': self.listener_port}, verify=False)
+                if response.status_code == 200:
+                    print("-o- Target responded successfully")
+                    return 1
+                
+                elif response.status_code == 404 or response.status_code == 500:
+                    print("-x- Target responded with a 404 or 500 error, check the resource path. attempting again in 10 minutes")
+                    self._log_error("""
+                                    Target responded with a 404 or 500 error, target server fault of incorrect resource path. 
+                                    attempting again in 10 minutes
+                                    """)
+
+            
+                else:
+                    print("-x- Target did not respond, attempting again in 10 minutes")
+                    self._log_error("Target did not respond, attempting again in 10 minutes")
+                
+                time.sleep(300)
+                attempts -= 1
+
+            except Exception as e:
+                print("-x- Error: ", e)
+                self._log_error("Error: ", e)
+                return -1         
+            
+    
+    def listener(self):
+        """
+        This method acts a server which listens for incoming requests from the target.
+        """
+        # Create a loop that listens for incoming connections
+        # The loop must break and exit the function if there is a socket timeouts or if there is an error.
+        # The timeout can be change by changing the value of LISTENER_TIMEOUT constant at 
+        #  the top of the file.
+        # The connection must receive a request from the target, the send a response 
+        #  and then be close the connection.  
+    
+        while True: 
+           
+            try:
+                # Accept an incoming connection.
+                connection, address = self.listener_socket.accept()
+                target_ip, target_port = address
+                print("-o- Received check-in server on port {port}".format(port=self.listener_port))
+                # Read the data from the client.
+                data = connection.recv(1024)
+      
+                response = {
+                    'method': "HTTP/1.1 200 OK\r\n",
+                    'headers': "Content-Type: text/plain\r\nContent-Length: 0\r\nConnection: Close\r\n",
+                }
+
+               
+                if (target_ip != self.ip):
+                    response['method'] = "HTTP/1.1 403 Forbidden\r\n"
+                    print("-x- Target IP <{target_ip}:{target_port}> address does not match, possible MITM attack".format(target_ip=target_ip, target_port=target_port))
+                    self._log_error("Target IP address does not match, possible MITM attack")
+                    
+    
+                connection.send(response['method'].encode())
+                connection.send(response['headers'].encode())
+                connection.send("\r\n".encode())
+
+                connection.close()
+
+            except socket.timeout:
+
+                print("-x- Target did not check in with dyn ip broadcaster, possible connection issue, will try again.")
+                self._log_error("Target did not check in, listener timed out")
+                break
+            
+
+            except Exception as e:
+                print("-x- Error: ", e)
+                self._log_error("Error: ", e)
+                break
+
+    
+    ###
+    # Helper methods
+    ###
+
+    # logs errors to a error.txt file"""
+    def _log_error(self,error_message, error_time = datetime.datetime.now()):
+        
+        file = open("error.txt", "a")
+        file.write("{message} - {time}\n".format(message=error_message, time=error_time))
+        file.close()
+
+
+    def _get_host(self, url):
+        try:
+            return socket.gethostbyname(url)
+        
+        # if the host name cannot be resolved, then the program will exit.
+        # however, we must ensure that the socket is closed before exiting.
+        except Exception as e:
+            err_msg = "Error: {error}".format(error=e)
+            self._log_error(err_msg)
+
+            # if the socket is open, then close it.
+            if self.listener_socket:              
+                self.shutdown()
+
+            print("-x- Unable to resolve host name, program terminated")
+            sys.exit(0)
+
+    def _set_listener_socket(self):
+        # I need to create a socket object.
+        # Bind a IP address and port to the socket.
+        # Set a timeout on the socket. So that it can act as an indicator that the 
+        # target is no longer checking in.
+        # Enable the socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(('0.0.0.0', int(self.listener_port))) 
+        sock.settimeout(LISTENER_TIMEOUT)
+        sock.listen(1)
+        return sock
+
+###
+# Functions
+###
+
+
+# Gets the command line arguments, turns them into a dictionary of command keys 
+# and arguments.
+#
+# CLI commands:
+# -------------
+#    t_url='host_name' : target URL.
+#    t_port=port_number : target port.
+#    t_resource=path : target resource path.
+#    s_port=port_number : service port.
+
+def get_cli_commands() -> dict:
+   
+    cli_commands = sys.argv[1:]
+
+    command_dict = {}
+
+    for command in cli_commands:
+        key_val = command.split('=')
+        command_dict[key_val[0]] = key_val[1]
+    
+    return command_dict
+
+
+# The root execution function
+def main():
+ 
+    commands = get_cli_commands()
+
+    # assign the command line arguments to variables.
+    url = commands['t_url'] if 't_url' in commands else TARGET_URL
+    port = commands['t_port'] if 't_port' in commands else TARGET_PORT
+    service_port = commands['s_port'] if 's_port' in commands else SERVICE_PORT
+    resource = commands['t_resource'] if 't_resource' in commands else TARGET_RESOURCE
+
+    client = Dynamic_IP_Client(
+        url, 
+        resource, 
+        port, 
+        service_port
+        )
+
+    # This loop will run forever, until the program is terminated, by pressing Ctrl+C.
+    try:
+        while True:
+            status = client.broadcaster()
+            if status == 1:
+                # Target responded successfully, now listening for "checking in" requests from target.
+                client.listener()
+            
+            # kill the program.
+            if status == -1:
+                client.shutdown()
+                sys.exit(0)
+
+            client.reset()
+    
+    except KeyboardInterrupt:
+        client.shutdown()
+        print("- Program terminated")
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

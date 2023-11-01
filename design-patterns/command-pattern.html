@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Patterns</title>
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            
+        }
+        header {
+            height : 2rem;
+            margin-bottom: 3em;
+        }
+        nav {
+            position: relative;
+            display: flex;
+            justify-content: start;
+            align-items: start;
+        }
+        .nav-menu-item {
+            width: 7rem;
+            position: relative;
+        }
+        .menu-heading {
+            display: block;
+            background-color: #e2e7eb;
+            
+            padding: 10px;
+            text-decoration: none;
+            color: #000;
+        }
+        .menu-list {
+            background-color: #e2e7eb;
+            
+            height: 0;
+            overflow: hidden;
+            opacity: 0;
+            margin: 0;
+            padding: 0;
+        }
+        .menu-list.active {
+            transition: opacity .7s ease-in-out;
+            height: auto;
+            opacity: 1;
+            display: block;
+        }
+
+        .menu-list li {
+            list-style: none;
+            padding: 0 .3rem;
+        }
+
+        .menu-list button {
+            display: block;
+            width: 100%;
+            background-color: transparent;
+            border-radius: .3rem;
+            border: none;
+            padding: 10px 5px;
+            text-align: left;
+            text-decoration: none;
+            color: #000;
+        }
+
+        .menu-list button:hover {
+            background-color: #413e3e;
+            color: #fff;
+
+        }
+    </style>
+</head>
+<body>
+    <h1>Design Patterns: Command</h1>
+    <header>
+    <nav>
+        <div class="nav-menu-item">
+            <a href="#" class="menu-heading" id="menu-heading-A">Menu A</a>
+            <ul class="menu-list" id="menu-list-A" class="">
+                <li><button name="command-a">Command A</button></li>
+                <li><button name="command-b">Command B</button></li>
+                <li><button name="command-c">Command C</button></li>
+            </ul>
+        </div>
+        <div class="nav-menu-item">
+            <a href="#" class="menu-heading" id="menu-heading-B">Menu B</a>
+            <ul class="menu-list" id="menu-list-B" class="">
+                <li><button name="command-a">Command A</button></li>
+                <li><button name="command-d">Command D</button></li>
+                <li><button name="command-e">Command E</button></li>
+            </ul>
+        </div>
+    </nav>
+    </header>
+    <section>
+        <h3>Command A</h3>
+        <p>Clicked: <span id="command-a-write">0</span></p>
+    </section>
+    <section>
+        <h3>Command B</h3>
+        <p>Clicked: <span id="command-b-write">0</span></p>
+    </section>
+    <section>
+        <h3>Command C</h3>
+        <p>Clicked: <span id="command-c-write">0</span></p>
+    </section>
+    <section>
+        <h3>Command D</h3>
+        <p>Clicked: <span id="command-d-write">0</span></p>
+    </section>
+    <section>
+        <h3>Command E</h3>
+        <p>Clicked: <span id="command-e-write">0</span></p>
+    </section> 
+    <script>
+        const commands = {
+            "command-a": function () {
+                const number = document.getElementById('command-a-write');
+                number.innerText = parseInt(number.innerText) + 1;
+                console.log('Command A');
+            },
+            "command-b": function () {
+                const number = document.getElementById('command-b-write');
+                number.innerText = parseInt(number.innerText) + 1;
+                console.log('Command B');
+            },
+            "command-c": function () {
+                const number = document.getElementById('command-c-write');
+                number.innerText = parseInt(number.innerText) + 1;
+                console.log('Command C');
+            },
+            "command-d": function () {
+                const number = document.getElementById('command-d-write');
+                number.innerText = parseInt(number.innerText) + 1;
+                console.log('Command D');
+            },
+            "command-e": function () {
+                const number = document.getElementById('command-e-write');
+                number.innerText = parseInt(number.innerText) + 1;
+                console.log('Command E');
+            }
+        };
+
+
+        const menuList = document.getElementById('menu-list-A');
+
+        /*document.querySelectorAll('.menu-heading').forEach((heading) => {
+
+            heading.addEventListener("mouseover", function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                heading.parentElement.querySelector('.menu-list').classList.toggle('active');
+
+                document.querySelectorAll('.menu-list').forEach((list) => {
+                    if (list !== heading.parentElement.querySelector('.menu-list')) {
+                        list.classList.remove('active');
+                    }
+
+ 
+                });      
+            });
+
+
+        
+        });
+        */
+        document.querySelectorAll('.nav-menu-item').forEach((menuitem) => {
+            menuitem.addEventListener('mouseenter', function(e) {
+                e.stopPropagation();
+                menuitem.querySelector('.menu-list').classList.add('active');
+            });
+
+
+            menuitem.addEventListener('mouseleave', function(e) {
+                e.stopPropagation();
+                menuitem.querySelector('.menu-list').classList.remove('active');
+            });
+        
+        });
+
+
+
+
+        document.querySelectorAll('.menu-list button').forEach(function(button) {
+            button.addEventListener('click', function(e) {
+                button.closest('ul').classList.toggle('active');
+                //menuList.classList.toggle('active');
+                try {
+                    commands[button.getAttribute('name')]();
+                } catch (error) {
+                    console.log(error);
+                }
+            });
+     
+        });
+
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bridge Pattern</title>
+    <style>
+        #target {
+            width: 150px;
+            height: 150px;
+            color: #fff;
+            padding: 10px 0;
+            text-align: center;
+            background-color: #000;
+
+        }
+    </style>
+</head>
+<body>
+    <div id="target">
+        <p>Target</p>
+        <button name="bnt-color">Change colour</button>
+    </div>
+    <script>
+
+        // Bridge Pattern
+        // First create an abstract class (js an abstract object)
+        const ImplementorObject = {
+
+            // this provides a common interface for all concrete implementations, and is used by the abstraction
+            applyStyle(element) {
+                try {
+                    element.style = this.style;
+                } catch (error) {
+                    if(this instanceof ImplementorObject) {
+                        throw new Error('ImplementorObject is an abstract class and cannot be instantiated');
+                    } else {
+                        throw new Error('ImplementorObject.applyStyle() must be implemented');
+                    }
+                }
+            }
+        }
+
+        // Then create concrete implementations of the abstract class, each with their own implementation of the interface
+        const styleOne = Object.create(ImplementorObject);
+        styleOne.style = `
+            background-color: red;
+            color: white;
+        `;
+        styleOne.applyStyle = function(element) {
+            element.style = this.style;
+        };
+
+    
+        const styleTwo = Object.create(ImplementorObject);    
+        styleTwo.style = `
+            background-color: blue;
+            color: white;
+        `;
+        styleTwo.applyStyle = function(element) {
+            element.style = this.style;
+        };
+
+
+        // Finally, create an abstraction, it must contain a reference to an implementor object
+        const Abstraction = {
+            target : document.getElementById('target'),
+            impl: ImplementorObject,
+
+            // then some method must be carried out which inturn calls the interface method of the implementor object
+            colorSquare() {
+                this.impl.applyStyle(target);
+            }
+        }
+
+        // Now create concrete abstractions, each with their own implementation of the interface
+        const SquareA = Object.create(Abstraction);
+        SquareA.impl = styleOne;
+
+        const SquareB = Object.create(Abstraction);
+        SquareB.impl = styleTwo;
+
+        // in the example given these two objects can be used interchangeably, another use for this pattern could be to
+        // used to accommodate different platforms, for example, a web app and a mobile app, both could use the same
+        // abstraction, but each would have their own concrete implementation of the interface, or perhaps implement some unique
+        // functionality for the platform in question
+
+        const button = document.querySelector('button[name="bnt-color"]');
+        button.addEventListener('click', () => {
+            if (target.style.backgroundColor === 'red') {
+                SquareB.colorSquare();
+            } else {
+                SquareA.colorSquare();
+            }
+        });
+ 
+
+    </script>
+</body>
+</html>
